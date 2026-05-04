@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plywood Sheet Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --wood: #C4884A;
+    --wood-light: #E8C49A;
+    --wood-dark: #7A4E28;
+    --ink: #1A1612;
+    --ink-mid: #3D3128;
+    --ink-soft: #7A6E62;
+    --paper: #FAF6F0;
+    --paper-mid: #F0E8DC;
+    --paper-dark: #E0D4C4;
+    --blue: #2356A8;
+    --blue-light: #EBF0FA;
+    --blue-mid: #B8CCEF;
+    --green: #1E6B3C;
+    --green-light: #E8F4EE;
+    --green-mid: #A8D4BA;
+    --amber: #8B5E0A;
+    --amber-mid: #F0C97A;
+    --purple: #5B2D8E;
+    --purple-light: #F2ECFA;
+    --purple-mid: #C9ADEA;
+    --radius: 6px;
+    --radius-lg: 10px;
+  }
+
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Syne', sans-serif; background: var(--paper); color: var(--ink); min-height: 100vh; overflow-x: hidden; }
+
+  /* ── Header ── */
+  header { background: var(--ink); color: var(--paper); position: relative; overflow: hidden; }
+  .header-inner { max-width: 960px; margin: 0 auto; padding: 3rem 2rem 2.5rem; position: relative; z-index: 2; }
+  .header-tag { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--wood-light); margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+  .header-tag::before { content: ''; display: inline-block; width: 24px; height: 1.5px; background: var(--wood); }
+  h1 { font-size: clamp(2rem, 5vw, 3.25rem); font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; color: var(--paper); margin-bottom: 1rem; }
+  h1 span { color: var(--wood); }
+  .header-sub { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--ink-soft); line-height: 1.6; max-width: 540px; }
+  .header-rule { height: 3px; background: linear-gradient(90deg, var(--wood) 0%, var(--wood-dark) 40%, transparent 100%); margin-top: 2.5rem; }
+  .grain { position: absolute; top: 0; right: 0; bottom: 0; width: 300px; opacity: 0.04; background: repeating-linear-gradient(92deg, transparent, transparent 3px, #fff 3px, #fff 4px); pointer-events: none; }
+
+  /* ── Main layout ── */
+  main { max-width: 960px; margin: 0 auto; padding: 2.5rem 2rem 4rem; }
+
+  .note-strip { background: var(--paper-mid); border: 1px solid var(--paper-dark); border-left: 3px solid var(--wood); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 2rem; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ink-soft); line-height: 1.6; }
+
+  /* Section dividers */
+  .section-block { margin-bottom: 2rem; }
+  .section-header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1rem; }
+  .section-pill { display: inline-flex; align-items: center; gap: 6px; background: var(--ink); color: var(--paper); font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; padding: 5px 10px; border-radius: 20px; margin-bottom: 1rem; }
+  .section-pill.drawer { background: var(--purple); }
+  .section-count { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--wood); font-weight: 500; }
+  .section-count.drawer-count { color: var(--purple); }
+
+  /* ── Cards (shared by doors + drawers) ── */
+  .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 8px; margin-bottom: 1.5rem; }
+
+  .item-card { background: #fff; border: 1px solid var(--paper-dark); border-radius: var(--radius); padding: 12px 14px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; user-select: none; position: relative; }
+  .item-card:hover { border-color: var(--wood-light); box-shadow: 0 2px 8px rgba(196,136,74,0.12); }
+
+  /* Door selected = blue */
+  .item-card.door-selected { border-color: var(--blue); background: var(--blue-light); box-shadow: 0 0 0 2px rgba(35,86,168,0.15); }
+  .item-card.door-selected::after { content: ''; position: absolute; top: 8px; right: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--blue); }
+  .item-card.door-selected .item-name { color: var(--blue); }
+  .item-card.door-selected .item-sub { color: var(--blue); opacity: 0.7; }
+
+  /* Drawer selected = purple */
+  .item-card.drawer-selected { border-color: var(--purple); background: var(--purple-light); box-shadow: 0 0 0 2px rgba(91,45,142,0.15); }
+  .item-card.drawer-selected::after { content: ''; position: absolute; top: 8px; right: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--purple); }
+  .item-card.drawer-selected .item-name { color: var(--purple); }
+  .item-card.drawer-selected .item-sub { color: var(--purple); opacity: 0.7; }
+  .item-card.drawer-selected .qty-btn { border-color: var(--purple-mid); background: #fff; color: var(--purple); }
+  .item-card.drawer-selected .qty-btn:hover { background: var(--purple-light); }
+  .item-card.drawer-selected .qty-val { color: var(--purple); }
+  .item-card.drawer-selected .item-price { color: var(--green); }
+
+  .item-name { font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; margin-bottom: 3px; }
+  .item-sub { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--ink-soft); line-height: 1.6; }
+  .item-price { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--green); margin-top: 4px; line-height: 1.5; }
+
+  .qty-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+  .qty-btn { width: 24px; height: 24px; border: 1px solid var(--paper-dark); border-radius: 4px; background: var(--paper); color: var(--ink); font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; font-family: 'DM Mono', monospace; transition: background 0.1s, border-color 0.1s; }
+  .qty-btn:hover { background: var(--paper-dark); border-color: var(--ink-soft); }
+  .item-card.door-selected .qty-btn { border-color: var(--blue-mid); background: #fff; color: var(--blue); }
+  .item-card.door-selected .qty-btn:hover { background: var(--blue-light); }
+  .qty-val { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500; min-width: 20px; text-align: center; color: var(--ink); }
+  .item-card.door-selected .qty-val { color: var(--blue); }
+
+  /* ── Action bar ── */
+  .action-bar { display: flex; gap: 10px; align-items: center; margin-bottom: 2.5rem; padding-top: 0.5rem; }
+  .calc-btn { flex: 1; padding: 13px 20px; background: var(--ink); color: var(--paper); border: none; border-radius: var(--radius); font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; letter-spacing: 0.01em; transition: background 0.15s, transform 0.1s; }
+  .calc-btn:hover { background: var(--ink-mid); }
+  .calc-btn:active { transform: scale(0.99); }
+  .reset-btn { padding: 13px 16px; background: none; border: 1px solid var(--paper-dark); border-radius: var(--radius); font-family: 'DM Mono', monospace; font-size: 12px; color: var(--ink-soft); cursor: pointer; transition: border-color 0.15s, color 0.15s; white-space: nowrap; }
+  .reset-btn:hover { border-color: var(--ink-soft); color: var(--ink); }
+
+  /* ── Results ── */
+  .results-section { animation: fadeUp 0.3s ease; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .results-group-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 0.75rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--paper-dark); }
+  .results-group-label:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+
+  .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.25rem; }
+  .result-card { border-radius: var(--radius-lg); padding: 1.5rem; }
+  .result-card.quarter { background: var(--blue-light); border: 1px solid var(--blue-mid); }
+  .result-card.three-quarter { background: var(--green-light); border: 1px solid var(--green-mid); }
+  .result-card.quarter-purple { background: var(--purple-light); border: 1px solid var(--purple-mid); }
+  .result-card.three-quarter-purple { background: #EEF7EF; border: 1px solid #9ECDA8; }
+  .result-thickness { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 4px; }
+  .result-card.quarter .result-thickness { color: var(--blue); }
+  .result-card.three-quarter .result-thickness { color: var(--green); }
+  .result-card.quarter-purple .result-thickness { color: var(--purple); }
+  .result-card.three-quarter-purple .result-thickness { color: #2A7A40; }
+  .result-purpose { font-size: 13px; font-weight: 600; margin-bottom: 1rem; color: var(--ink); }
+  .result-num { font-size: 52px; font-weight: 800; line-height: 1; letter-spacing: -0.03em; margin-bottom: 4px; }
+  .result-card.quarter .result-num { color: var(--blue); }
+  .result-card.three-quarter .result-num { color: var(--green); }
+  .result-card.quarter-purple .result-num { color: var(--purple); }
+  .result-card.three-quarter-purple .result-num { color: #2A7A40; }
+  .result-unit { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ink-soft); margin-bottom: 1rem; }
+  .result-detail { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--ink-soft); line-height: 1.7; padding-top: 0.75rem; border-top: 1px solid rgba(0,0,0,0.08); }
+  .result-detail strong { color: var(--ink); font-weight: 500; }
+
+  /* Pricing cards */
+  .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+  .pricing-card { background: #fff; border: 1px solid var(--paper-dark); border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; }
+  .pricing-card.cost { border-left: 3px solid var(--amber); }
+  .pricing-card.sell { border-left: 3px solid var(--green); }
+  .pricing-card.margin { border-left: 3px solid var(--blue); }
+  .pricing-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px; }
+  .pricing-card.cost .pricing-label { color: var(--amber); }
+  .pricing-card.sell .pricing-label { color: var(--green); }
+  .pricing-card.margin .pricing-label { color: var(--blue); }
+  .pricing-main { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 3px; }
+  .pricing-card.cost .pricing-main { color: var(--amber); }
+  .pricing-card.sell .pricing-main { color: var(--green); }
+  .pricing-card.margin .pricing-main { color: var(--blue); }
+  .pricing-sub { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--ink-soft); line-height: 1.6; }
+
+  /* Breakdown table */
+  .breakdown-wrap { background: #fff; border: 1px solid var(--paper-dark); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1.5rem; }
+  .breakdown-header { padding: 12px 16px; background: var(--paper-mid); border-bottom: 1px solid var(--paper-dark); display: flex; align-items: center; gap: 8px; }
+  .breakdown-header span { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); }
+  .breakdown-header .bh-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .bh-dot.door { background: var(--blue); }
+  .bh-dot.drawer { background: var(--purple); }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { text-align: left; font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); padding: 10px 16px; border-bottom: 1px solid var(--paper-dark); background: var(--paper); }
+  thead th.right { text-align: right; }
+  tbody td { padding: 10px 16px; border-bottom: 1px solid var(--paper-mid); font-family: 'DM Mono', monospace; font-size: 12px; color: var(--ink); }
+  tbody td.right { text-align: right; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr.total-row td { font-weight: 500; background: var(--paper-mid); border-top: 1px solid var(--paper-dark); }
+  tbody tr:hover:not(.total-row) td { background: var(--paper); }
+  td.item-label { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 13px; }
+  td.cost-cell { color: var(--amber); }
+  td.sell-cell { color: var(--green); font-weight: 500; }
+  td.no-price { color: var(--ink-soft); font-style: italic; }
+
+  /* Quote section */
+  .quote-section { background: #fff; border: 1px solid var(--paper-dark); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1.5rem; }
+  .quote-header { padding: 14px 20px; background: var(--ink); }
+  .quote-header-title { font-size: 14px; font-weight: 700; color: var(--paper); margin-bottom: 2px; }
+  .quote-header-sub { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--ink-soft); }
+  .quote-body { padding: 1.5rem; }
+  .quote-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.25rem; }
+  .field-group { display: flex; flex-direction: column; gap: 5px; }
+  .field-group.full { grid-column: 1 / -1; }
+  .field-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); }
+  .field-group input, .field-group textarea { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--ink); background: var(--paper); border: 1px solid var(--paper-dark); border-radius: var(--radius); padding: 9px 12px; width: 100%; transition: border-color 0.15s; resize: vertical; }
+  .field-group input:focus, .field-group textarea:focus { outline: none; border-color: var(--blue-mid); }
+  .quote-actions { display: flex; gap: 8px; }
+  .quote-preview-btn { flex: 1; padding: 11px 16px; background: var(--paper-mid); border: 1px solid var(--paper-dark); border-radius: var(--radius); font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; color: var(--ink); cursor: pointer; transition: background 0.15s; }
+  .quote-preview-btn:hover { background: var(--paper-dark); }
+  .quote-email-btn { flex: 2; padding: 11px 16px; background: var(--ink); border: none; border-radius: var(--radius); font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; color: var(--paper); cursor: pointer; transition: background 0.15s; }
+  .quote-email-btn:hover { background: var(--ink-mid); }
+  .preview-box { margin-top: 1.25rem; background: var(--paper); border: 1px solid var(--paper-dark); border-radius: var(--radius); padding: 1.25rem 1.5rem; display: none; }
+  .preview-box.visible { display: block; }
+  .preview-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--paper-dark); }
+  .preview-box pre { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ink); white-space: pre-wrap; line-height: 1.8; }
+
+  .empty-msg { text-align: center; padding: 3rem 2rem; border: 1.5px dashed var(--paper-dark); border-radius: var(--radius-lg); background: #fff; }
+  .empty-msg p { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--ink-soft); line-height: 1.7; }
+
+  footer { background: var(--ink); color: var(--ink-soft); text-align: center; padding: 1.5rem; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.06em; }
+  footer span { color: var(--wood); }
+
+  @media (max-width: 620px) {
+    h1 { font-size: 1.8rem; }
+    .results-grid, .pricing-grid, .quote-fields { grid-template-columns: 1fr; }
+    .item-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+    .quote-actions { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="grain"></div>
+  <div class="header-inner">
+    <div class="header-tag">Woodworking tool</div>
+    <h1>Plywood Sheet<br><span>Calculator</span></h1>
+    <p class="header-sub">Select cabinet doors and drawer fronts — get combined sheet counts, material costs, sell totals, and a ready-to-send customer quote.</p>
+  </div>
+  <div class="header-rule"></div>
+</header>
+
+<main>
+  <div class="note-strip">
+    Kerf: 1/8" (0.125") per cut · Sheet: 4×8 ft (32 sqft) · ¼" = panels · ¾" = rails &amp; stiles · Cost shown as low–high range
+  </div>
+
+  <!-- DOORS -->
+  <div class="section-block">
+    <div class="section-pill">Cabinet Doors</div>
+    <div class="section-header">
+      <span class="section-label">Step 1 — Choose door sizes</span>
+      <span class="section-count" id="doorCount"></span>
+    </div>
+    <div class="item-grid" id="doorGrid"></div>
+  </div>
+
+  <!-- DRAWER FRONTS -->
+  <div class="section-block">
+    <div class="section-pill drawer">Drawer Fronts</div>
+    <div class="section-header">
+      <span class="section-label">Step 2 — Choose drawer front sizes</span>
+      <span class="section-count drawer-count" id="drawerCount"></span>
+    </div>
+    <div class="item-grid" id="drawerGrid"></div>
+  </div>
+
+  <div class="action-bar">
+    <button class="calc-btn" id="calcBtn">Calculate sheets &amp; pricing</button>
+    <button class="reset-btn" id="resetBtn">Reset all</button>
+  </div>
+
+  <div id="resultsArea"></div>
+</main>
+
+<footer>
+  <span>1/8" kerf</span> applied proportionally · Sheet waste accounted for · Always buy one extra
+</footer>
+
+<script>
+const SHEET_W = 48, SHEET_H = 96, KERF = 0.125;
+const SHEET_SQFT = (SHEET_W * SHEET_H) / 144;
+
+const doors = [
+  { id: "d_12x18",  label: '12" x 18"',   panel: 0.89, rs: 0.61, costLo: 3.25,  costHi: 3.75,  sell: 55  },
+  { id: "d_12x24",  label: '12" x 24"',   panel: 1.26, rs: 0.74, costLo: 4.25,  costHi: 5.00,  sell: 62  },
+  { id: "d_15x18",  label: '15" x 18"',   panel: 1.20, rs: 0.68, costLo: 4.00,  costHi: 4.75,  sell: 58  },
+  { id: "d_15x24",  label: '15" x 24"',   panel: 1.69, rs: 0.81, costLo: 5.25,  costHi: 6.25,  sell: 70  },
+  { id: "d_15x30",  label: '15" x 30"',   panel: 2.18, rs: 0.94, costLo: 6.50,  costHi: 7.75,  sell: 80  },
+  { id: "d_18x24",  label: '18" x 24"',   panel: 2.11, rs: 0.89, costLo: 6.00,  costHi: 7.25,  sell: 82  },
+  { id: "d_18x30",  label: '18" x 30"',   panel: 2.73, rs: 1.02, costLo: 7.25,  costHi: 8.75,  sell: 92  },
+  { id: "d_18x34h", label: '18" x 34.5"', panel: 3.04, rs: 1.27, costLo: 7.50,  costHi: 9.00,  sell: 105 },
+  { id: "d_21x30",  label: '21" x 30"',   panel: 3.29, rs: 1.08, costLo: 8.25,  costHi: 9.75,  sell: 105 },
+  { id: "d_24x30",  label: '24" x 30"',   panel: 3.85, rs: 1.15, costLo: 9.25,  costHi: 11.00, sell: 115 },
+  { id: "d_24x36",  label: '24" x 36"',   panel: 4.72, rs: 1.28, costLo: 10.75, costHi: 12.75, sell: 130 },
+];
+
+// Drawer fronts — no pricing provided yet
+const drawers = [
+  { id: "df_12x6",  label: '12" x 6"',  panel: 0.24, rs: 0.26, cost: 1.38, sell: 35  },
+  { id: "df_12x8",  label: '12" x 8"',  panel: 0.41, rs: 0.33, cost: 1.93, sell: 40  },
+  { id: "df_12x10", label: '12" x 10"', panel: 0.58, rs: 0.42, cost: 2.48, sell: 45  },
+  { id: "df_15x6",  label: '15" x 6"',  panel: 0.41, rs: 0.34, cost: 1.98, sell: 38  },
+  { id: "df_15x8",  label: '15" x 8"',  panel: 0.62, rs: 0.38, cost: 2.63, sell: 45  },
+  { id: "df_15x10", label: '15" x 10"', panel: 0.82, rs: 0.51, cost: 3.40, sell: 50  },
+  { id: "df_18x6",  label: '18" x 6"',  panel: 0.58, rs: 0.43, cost: 2.53, sell: 42  },
+  { id: "df_18x8",  label: '18" x 8"',  panel: 0.82, rs: 0.51, cost: 3.40, sell: 50  },
+  { id: "df_18x10", label: '18" x 10"', panel: 1.06, rs: 0.64, cost: 4.38, sell: 58  },
+  { id: "df_24x6",  label: '24" x 6"',  panel: 0.90, rs: 0.51, cost: 3.08, sell: 48  },
+  { id: "df_24x8",  label: '24" x 8"',  panel: 1.20, rs: 0.67, cost: 4.15, sell: 58  },
+  { id: "df_24x10", label: '24" x 10"', panel: 1.51, rs: 0.84, cost: 5.20, sell: 65  },
+  { id: "df_30x8",  label: '30" x 8"',  panel: 1.57, rs: 0.93, cost: 5.50, sell: 70  },
+  { id: "df_30x10", label: '30" x 10"', panel: 1.97, rs: 1.10, cost: 6.83, sell: 80  },
+  { id: "df_36x10", label: '36" x 10"', panel: 2.42, rs: 1.18, cost: 7.63, sell: 90  },
+  { id: "df_36x12", label: '36" x 12"', panel: 2.89, rs: 1.29, cost: 8.75, sell: 105 },
+];
+
+const state = {};
+[...doors, ...drawers].forEach(d => state[d.id] = 0);
+
+function fmt(n) { return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+function updateCounts() {
+  const dTotal = doors.reduce((a, d) => a + state[d.id], 0);
+  const dfTotal = drawers.reduce((a, d) => a + state[d.id], 0);
+  document.getElementById('doorCount').textContent = dTotal > 0 ? `${dTotal} selected` : '';
+  document.getElementById('drawerCount').textContent = dfTotal > 0 ? `${dfTotal} selected` : '';
+}
+
+function renderItemGrid(items, gridId, selectedClass) {
+  const grid = document.getElementById(gridId);
+  grid.innerHTML = '';
+  items.forEach(d => {
+    const qty = state[d.id];
+    const sel = qty > 0;
+    const card = document.createElement('div');
+    card.className = 'item-card' + (sel ? ' ' + selectedClass : '');
+    const costStr = d.cost != null
+      ? `Cost: ${fmt(d.cost)}`
+      : (d.costLo != null ? `Cost: ${fmt(d.costLo)}&ndash;${fmt(d.costHi)}` : null);
+    const priceHtml = d.sell
+      ? `<div class="item-price">${costStr ? costStr + ' &middot; ' : ''}Sell: ${fmt(d.sell)}</div>`
+      : `<div class="item-price" style="color:var(--ink-soft);font-style:italic;">Price TBD</div>`;
+    card.innerHTML = `
+      <div class="item-name">${d.label}</div>
+      <div class="item-sub">Panel: ${d.panel} sqft</div>
+      <div class="item-sub">R&S: ${d.rs} sqft</div>
+      ${priceHtml}
+      <div class="qty-row">
+        <button class="qty-btn" data-id="${d.id}" data-delta="-1">-</button>
+        <span class="qty-val">${qty}</span>
+        <button class="qty-btn" data-id="${d.id}" data-delta="1">+</button>
+      </div>`;
+    grid.appendChild(card);
+  });
+
+  grid.querySelectorAll('.qty-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      state[btn.dataset.id] = Math.max(0, state[btn.dataset.id] + parseInt(btn.dataset.delta));
+      renderItemGrid(items, gridId, selectedClass);
+      updateCounts();
+    });
+  });
+
+  grid.querySelectorAll('.item-card').forEach((card, i) => {
+    card.addEventListener('click', () => {
+      state[items[i].id] = state[items[i].id] === 0 ? 1 : 0;
+      renderItemGrid(items, gridId, selectedClass);
+      updateCounts();
+    });
+  });
+}
+
+function renderAll() {
+  renderItemGrid(doors,   'doorGrid',   'door-selected');
+  renderItemGrid(drawers, 'drawerGrid', 'drawer-selected');
+  updateCounts();
+}
+
+function kerfAdjust(sqft) { return sqft * (1 + (KERF / SHEET_W) + (KERF / SHEET_H)); }
+function sheetsNeeded(sqft) { return Math.ceil(kerfAdjust(sqft) / SHEET_SQFT); }
+
+function buildQuoteText(doorBD, drawerBD, totalSell, panelSheets, rsSheets, customerName, notes, yourName, yourBiz) {
+  const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const pad = (s, n) => String(s).padEnd(n);
+  const doorLines = doorBD.length ? doorBD.map(b => `  ${pad(b.label, 14)}  x${pad(b.qty, 3)}  ${fmt(b.sell * b.qty)}`).join('\n') : '  (none)';
+  const drawerLines = drawerBD.length ? drawerBD.map(b => `  ${pad(b.label, 14)}  x${pad(b.qty, 3)}  ${b.sell ? fmt(b.sell * b.qty) : 'TBD'}`).join('\n') : '  (none)';
+  const biz = yourBiz || 'Your Business';
+  const sig = yourName ? ` - ${yourName}` : '';
+  return `Subject: Cabinet Door & Drawer Front Quote - ${date}
+
+${customerName ? `Hi ${customerName},\n\nThank you for your interest.` : 'Thank you for your interest.'} Below is your custom quote.
+
+================================================
+  QUOTE DATE: ${date}
+================================================
+
+  CABINET DOORS
+  ------------------------------------------
+${doorLines}
+
+  DRAWER FRONTS
+  ------------------------------------------
+${drawerLines}
+
+  ------------------------------------------
+  TOTAL:    ${fmt(totalSell)}
+  ------------------------------------------
+
+  MATERIAL REQUIREMENTS
+    1/4" plywood (panels):       ${panelSheets} sheet${panelSheets !== 1 ? 's' : ''} (4x8)
+    3/4" plywood (rails/stiles): ${rsSheets} sheet${rsSheets !== 1 ? 's' : ''} (4x8)
+${notes ? `\n  NOTES\n  ${notes}\n` : ''}
+================================================
+  ${biz}${sig}
+================================================`;
+}
+
+function calculate() {
+  const selDoors   = doors.filter(d => state[d.id] > 0);
+  const selDrawers = drawers.filter(d => state[d.id] > 0);
+
+  if (!selDoors.length && !selDrawers.length) {
+    document.getElementById('resultsArea').innerHTML = `<div class="empty-msg"><p>Nothing selected yet.<br>Choose door sizes and/or drawer front sizes above.</p></div>`;
+    return;
+  }
+
+  // Accumulate totals
+  let dPanel = 0, dRS = 0, dCostLo = 0, dCostHi = 0, dSell = 0, doorBD = [];
+  selDoors.forEach(d => {
+    const qty = state[d.id];
+    dPanel  += d.panel * qty;
+    dRS     += d.rs    * qty;
+    dCostLo += d.costLo * qty;
+    dCostHi += d.costHi * qty;
+    dSell   += d.sell   * qty;
+    doorBD.push({ label: d.label, qty, costLo: d.costLo * qty, costHi: d.costHi * qty, sell: d.sell });
+  });
+
+  let dfPanel = 0, dfRS = 0, dfCost = 0, dfSell = 0, drawerBD = [];
+  selDrawers.forEach(d => {
+    const qty = state[d.id];
+    dfPanel += d.panel * qty;
+    dfRS    += d.rs    * qty;
+    dfCost  += d.cost  * qty;
+    if (d.sell) dfSell += d.sell * qty;
+    drawerBD.push({ label: d.label, qty, cost: d.cost * qty, sell: d.sell || 0 });
+  });
+
+  const totalPanel = dPanel + dfPanel;
+  const totalRS    = dRS    + dfRS;
+  const totalSell  = dSell  + dfSell;
+  const totalCostLo = dCostLo + dfCost;
+  const totalCostHi = dCostHi + dfCost;
+
+  const panelSheets = sheetsNeeded(totalPanel);
+  const rsSheets    = sheetsNeeded(totalRS);
+
+  const totalDoors   = doorBD.reduce((a, b) => a + b.qty, 0);
+  const totalDrawers = drawerBD.reduce((a, b) => a + b.qty, 0);
+
+  const marginLo = totalSell > 0 ? ((totalSell - totalCostHi) / totalSell * 100).toFixed(1) : 'N/A';
+  const marginHi = totalSell > 0 ? ((totalSell - totalCostLo) / totalSell * 100).toFixed(1) : 'N/A';
+
+  // Build door rows
+  const doorRows = doorBD.map(b => `
+    <tr>
+      <td class="item-label">${b.label}</td>
+      <td>${b.qty}</td>
+      <td class="right cost-cell">${fmt(b.costLo)} - ${fmt(b.costHi)}</td>
+      <td class="right sell-cell">${fmt(b.sell * b.qty)}</td>
+    </tr>`).join('') + (doorBD.length ? `
+  <tr class="total-row">
+    <td class="item-label">Door total</td>
+    <td>${totalDoors}</td>
+    <td class="right cost-cell">${fmt(dCostLo)} - ${fmt(dCostHi)}</td>
+    <td class="right sell-cell">${fmt(dSell)}</td>
+  </tr>` : '');
+
+  // Build drawer rows
+  const drawerRows = drawerBD.map(b => `
+    <tr>
+      <td class="item-label">${b.label}</td>
+      <td>${b.qty}</td>
+      <td class="right cost-cell">${fmt(b.cost)}</td>
+      <td class="right sell-cell">${b.sell ? fmt(b.sell * b.qty) : '<span class="no-price">TBD</span>'}</td>
+    </tr>`).join('') + (drawerBD.length ? `
+  <tr class="total-row">
+    <td class="item-label">Drawer total</td>
+    <td>${totalDrawers}</td>
+    <td class="right cost-cell">${fmt(dfCost)}</td>
+    <td class="right sell-cell">${dfSell > 0 ? fmt(dfSell) : 'TBD'}</td>
+  </tr>` : '');
+
+  // Door sheet cards (only if doors selected)
+  const doorSheetCards = selDoors.length ? `
+    <p class="results-group-label">Cabinet door sheets</p>
+    <div class="results-grid">
+      <div class="result-card quarter">
+        <div class="result-thickness">1/4" plywood — doors</div>
+        <div class="result-purpose">Panels</div>
+        <div class="result-num">${sheetsNeeded(dPanel)}</div>
+        <div class="result-unit">4x8 sheet${sheetsNeeded(dPanel) !== 1 ? 's' : ''}</div>
+        <div class="result-detail"><strong>${dPanel.toFixed(2)} sqft</strong> raw &nbsp;|&nbsp; <strong>${kerfAdjust(dPanel).toFixed(2)} sqft</strong> with kerf</div>
+      </div>
+      <div class="result-card three-quarter">
+        <div class="result-thickness">3/4" plywood — doors</div>
+        <div class="result-purpose">Rails &amp; Stiles</div>
+        <div class="result-num">${sheetsNeeded(dRS)}</div>
+        <div class="result-unit">4x8 sheet${sheetsNeeded(dRS) !== 1 ? 's' : ''}</div>
+        <div class="result-detail"><strong>${dRS.toFixed(2)} sqft</strong> raw &nbsp;|&nbsp; <strong>${kerfAdjust(dRS).toFixed(2)} sqft</strong> with kerf</div>
+      </div>
+    </div>` : '';
+
+  // Drawer sheet cards (only if drawers selected)
+  const drawerSheetCards = selDrawers.length ? `
+    <p class="results-group-label">Drawer front sheets</p>
+    <div class="results-grid">
+      <div class="result-card quarter-purple">
+        <div class="result-thickness">1/4" plywood — drawers</div>
+        <div class="result-purpose">Panels</div>
+        <div class="result-num">${sheetsNeeded(dfPanel)}</div>
+        <div class="result-unit">4x8 sheet${sheetsNeeded(dfPanel) !== 1 ? 's' : ''}</div>
+        <div class="result-detail"><strong>${dfPanel.toFixed(2)} sqft</strong> raw &nbsp;|&nbsp; <strong>${kerfAdjust(dfPanel).toFixed(2)} sqft</strong> with kerf</div>
+      </div>
+      <div class="result-card three-quarter-purple">
+        <div class="result-thickness">3/4" plywood — drawers</div>
+        <div class="result-purpose">Rails &amp; Stiles</div>
+        <div class="result-num">${sheetsNeeded(dfRS)}</div>
+        <div class="result-unit">4x8 sheet${sheetsNeeded(dfRS) !== 1 ? 's' : ''}</div>
+        <div class="result-detail"><strong>${dfRS.toFixed(2)} sqft</strong> raw &nbsp;|&nbsp; <strong>${kerfAdjust(dfRS).toFixed(2)} sqft</strong> with kerf</div>
+      </div>
+    </div>` : '';
+
+  // Combined sheet cards (always shown)
+  const combinedSheetCards = (selDoors.length && selDrawers.length) ? `
+    <p class="results-group-label">Combined total sheets needed</p>
+    <div class="results-grid">
+      <div class="result-card quarter">
+        <div class="result-thickness">1/4" plywood — combined</div>
+        <div class="result-purpose">Panels (all items)</div>
+        <div class="result-num">${panelSheets}</div>
+        <div class="result-unit">4x8 sheet${panelSheets !== 1 ? 's' : ''}</div>
+        <div class="result-detail"><strong>${totalPanel.toFixed(2)} sqft</strong> raw &nbsp;|&nbsp; <strong>${kerfAdjust(totalPanel).toFixed(2)} sqft</strong> with kerf</div>
+      </div>
+      <div class="result-card three-quarter">
+        <div class="result-thickness">3/4" plywood — combined</div>
+        <div class="result-purpose">Rails &amp; Stiles (all items)</div>
+        <div class="result-num">${rsSheets}</div>
+        <div class="result-unit">4x8 sheet${rsSheets !== 1 ? 's' : ''}</div>
+        <div class="result-detail"><strong>${totalRS.toFixed(2)} sqft</strong> raw &nbsp;|&nbsp; <strong>${kerfAdjust(totalRS).toFixed(2)} sqft</strong> with kerf</div>
+      </div>
+    </div>` : '';
+
+  // Door breakdown table
+  const doorTableHtml = selDoors.length ? `
+    <div class="breakdown-wrap">
+      <div class="breakdown-header">
+        <span class="bh-dot door"></span>
+        <span>Cabinet door breakdown</span>
+      </div>
+      <table>
+        <thead><tr><th>Size</th><th>Qty</th><th class="right">Material cost</th><th class="right">Sell total</th></tr></thead>
+        <tbody>${doorRows}</tbody>
+      </table>
+    </div>` : '';
+
+  // Drawer breakdown table
+  const drawerTableHtml = selDrawers.length ? `
+    <div class="breakdown-wrap">
+      <div class="breakdown-header">
+        <span class="bh-dot drawer"></span>
+        <span>Drawer front breakdown</span>
+      </div>
+      <table>
+        <thead><tr><th>Size</th><th>Qty</th><th class="right">Material cost</th><th class="right">Sell total</th></tr></thead>
+        <tbody>${drawerRows}</tbody>
+      </table>
+    </div>` : '';
+
+  document.getElementById('resultsArea').innerHTML = `
+  <div class="results-section">
+
+    ${doorSheetCards}
+    ${drawerSheetCards}
+    ${combinedSheetCards}
+
+    <div class="pricing-grid">
+      <div class="pricing-card cost">
+        <div class="pricing-label">Material cost</div>
+        <div class="pricing-main">${fmt(totalCostLo)}</div>
+        <div class="pricing-sub">Low estimate (doors lo + drawers)<br>High: ${fmt(totalCostHi)}</div>
+      </div>
+      <div class="pricing-card sell">
+        <div class="pricing-label">Total sell price</div>
+        <div class="pricing-main">${fmt(totalSell)}</div>
+        <div class="pricing-sub">${totalDoors} door${totalDoors !== 1 ? 's' : ''}${totalDrawers > 0 ? ` + ${totalDrawers} drawer front${totalDrawers !== 1 ? 's' : ''}` : ''}</div>
+      </div>
+      <div class="pricing-card margin">
+        <div class="pricing-label">Gross margin</div>
+        <div class="pricing-main">${marginLo}%</div>
+        <div class="pricing-sub">At high cost scenario<br>At low cost: ${marginHi}%</div>
+      </div>
+    </div>
+
+    ${doorTableHtml}
+    ${drawerTableHtml}
+
+    <div class="quote-section">
+      <div class="quote-header">
+        <div class="quote-header-title">Email Quote Generator</div>
+        <div class="quote-header-sub">Fill in the details below to generate a ready-to-send customer quote</div>
+      </div>
+      <div class="quote-body">
+        <div class="quote-fields">
+          <div class="field-group">
+            <label class="field-label">Customer name</label>
+            <input type="text" id="qCustomer" placeholder="e.g. John Smith">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Customer email</label>
+            <input type="text" id="qEmail" placeholder="customer@email.com">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Your name</label>
+            <input type="text" id="qYourName" placeholder="e.g. Mike Johnson">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Your business name</label>
+            <input type="text" id="qBiz" placeholder="e.g. Johnson Woodworks">
+          </div>
+          <div class="field-group full">
+            <label class="field-label">Additional notes (optional)</label>
+            <textarea id="qNotes" rows="3" placeholder="Lead time, finish options, delivery info, payment terms..."></textarea>
+          </div>
+        </div>
+        <div class="quote-actions">
+          <button class="quote-preview-btn" id="previewBtn">Preview quote</button>
+          <button class="quote-email-btn" id="emailBtn">Open in email client</button>
+        </div>
+        <div class="preview-box" id="previewBox">
+          <div class="preview-label">Quote preview</div>
+          <pre id="previewText"></pre>
+        </div>
+      </div>
+    </div>
+
+  </div>`;
+
+  document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  function getQuote() {
+    return buildQuoteText(
+      doorBD, drawerBD, totalSell, panelSheets, rsSheets,
+      document.getElementById('qCustomer').value.trim(),
+      document.getElementById('qNotes').value.trim(),
+      document.getElementById('qYourName').value.trim(),
+      document.getElementById('qBiz').value.trim()
+    );
+  }
+
+  document.getElementById('previewBtn').addEventListener('click', () => {
+    const box = document.getElementById('previewBox');
+    document.getElementById('previewText').textContent = getQuote();
+    box.classList.toggle('visible');
+  });
+
+  document.getElementById('emailBtn').addEventListener('click', () => {
+    const q = getQuote();
+    const to = document.getElementById('qEmail').value.trim();
+    const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    window.location.href = `mailto:${to}?subject=${encodeURIComponent('Cabinet Door & Drawer Front Quote - ' + date)}&body=${encodeURIComponent(q)}`;
+  });
+}
+
+document.getElementById('calcBtn').addEventListener('click', calculate);
+document.getElementById('resetBtn').addEventListener('click', () => {
+  [...doors, ...drawers].forEach(d => state[d.id] = 0);
+  renderAll();
+  document.getElementById('resultsArea').innerHTML = '';
+});
+
+renderAll();
+</script>
+</body>
+</html>
